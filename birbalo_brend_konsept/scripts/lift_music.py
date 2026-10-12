@@ -77,7 +77,8 @@ add(fx, 27.9, 0.5 * np.sin(2 * np.pi * np.cumsum(90 * np.exp(-tt * 5) + 40) / SR
 mix = reverb(music, 0.45) + reverb(fx, 0.25)
 mix *= env_ad(N, 0.05, 1.5)
 mix = mix / np.abs(mix).max() * 0.85
-out = sys.argv[1] if len(sys.argv) > 1 else 'lift_music.wav'
+
+out = sys.argv[1] if len(sys.argv) > 1 else "lift_music.wav"
 with wave.open(out, 'wb') as w:
     w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes((mix * 32767).astype(np.int16).tobytes())
 print('ok', out)
