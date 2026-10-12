@@ -29,7 +29,7 @@ CLIPS = [
     ('Full_moon_rises_from_tandoor', 10.5, 4.0, lambda u: u * 2.0, 'iris'),
     ('Woman_lifts_fog_into_bag', 14.5, 4.0, lambda u: u * 2.0, 'fog'),
     ('Water_pouring_from_television', 18.5, 4.0, lambda u: 2.0 + u, 'whip'),
-    ('Young_man_turning_head', 22.5, 4.0, lambda u: u * 2.0, 'flicker'),
+    ('Young_man_turning_head', 22.5, 4.0, lambda u: u * 1.5, 'flicker'),
     ('Books_and_lamp_moving', 26.5, 4.0, lambda u: u * 1.5, 'zoom'),
     ('Camera_pushes_toward_mirror', 30.5, 4.0, lambda u: u * 2.0, 'burn'),
 ]
@@ -71,10 +71,38 @@ def clip_index(t):
     return None
 
 
+BOOTH = 'Young_man_turning_head'
+
+
+def booth_cam(lt):
+    """budka sahnasi: chap odam -> uzluksiz panorama -> o'ng odam. (cx, cy, zoom) manba (720x1280) koordinatida"""
+    L, R = (150.0, 640.0), (600.0, 630.0)
+    if lt < 1.5:
+        k = lt / 1.5; return L[0], L[1], 2.1 + 0.35 * k
+    if lt < 2.7:
+        k = (lt - 1.5) / 1.2; e = k * k * (3 - 2 * k)
+        return L[0] + (R[0] - L[0]) * e, L[1] + (R[1] - L[1]) * e, 2.45 - 0.25 * math.sin(math.pi * k)
+    k = (lt - 2.7) / 1.3; return R[0], R[1], 2.45 + 0.5 * expo_out(k)
+
+
 def video(t):
     i = clip_index(t)
     name, s, d, fmap, _ = CLIPS[i]
     fr = frames(name); st = fmap(t - s)
+    if name == BOOTH:
+        cx, cy, z = booth_cam(t - s)
+        cw, ch = 720 / z, 1280 / z
+        x0 = min(max(cx - cw / 2, 0), 720 - cw); y0 = min(max(cy - ch / 2, 0), 1280 - ch)
+        src = Image.fromarray(fr[min(len(fr) - 1, int(st * 24))])
+        im = src.crop((int(x0), int(y0), int(x0 + cw), int(y0 + ch))).resize((W, H), Image.BICUBIC)
+        lt = t - s
+        if 1.5 < lt < 2.7:
+            sp = math.sin(math.pi * (lt - 1.5) / 1.2)
+            im = im.filter(ImageFilter.BoxBlur(int(10 * sp))) if sp > 0.15 else im
+        if lt > 3.0:
+            a = 0.35 * math.exp(-(lt - 3.0) * 4) + (0.12 if int(lt * 12) % 3 == 0 else 0) * (lt < 3.6)
+            im = Image.blend(im, Image.new('RGB', (W, H), (150, 10, 10)), min(0.5, a))
+        return im, i, lt, d
     im = Image.fromarray(fr[min(len(fr) - 1, int(st * 24))]).resize((W, H), Image.LANCZOS)
     z = 1.0 + 0.04 * (t - s) / d
     im = im.resize((int(W * z), int(H * z)), Image.BILINEAR)
@@ -180,7 +208,7 @@ def doors_close(im, lt):
 
 
 # ---------- yozuvlar ----------
-WM_POS = [(800, 300), (260, 1150), (820, 320), (250, 300), (810, 1180), (250, 330), (820, 300), (250, 1150), (820, 320),
+WM_POS = [(800, 300), (260, 1150), (820, 320), (250, 300), (810, 1180), (250, 330), (820, 300), (540, 330), (820, 320),
           (250, 300)]
 
 
@@ -228,7 +256,7 @@ def frame(t):
         im = transition(im, CLIPS[i][4], lt)
         im = exit_fx(im, i, lt, d)
         if t > END0 - 0.6: im = doors_close(im, t - (END0 - 0.6))
-        dx, dy, rot = shake(t, [(4.6, 0.9)])
+        dx, dy, rot = shake(t, [(4.6, 0.9), (25.5, 1.1)])
         im = camera(im.convert('RGBA'), 1.0 + (0.02 if abs(dx) > 0.5 else 0), rot, dx, dy).convert('RGB')
         watermark(im, t); narr_caption(im, t)
     else:

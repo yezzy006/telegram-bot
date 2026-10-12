@@ -41,11 +41,26 @@ add(fx, 4.6, 0.75 * np.sin(2 * np.pi * np.cumsum(70 * np.exp(-tt * 3) + 28) / SR
 for k in range(5):
     n = int(0.02 * SR); tt = np.arange(n) / SR
     add(fx, 8.2 + k * 0.5, 0.10 * np.sin(2 * np.pi * 3200 * tt) * np.exp(-tt * 300))
-# budka: yurak urishi (22.5-26.5)
-for k in range(6):
-    for off, a in ((0, 0.38), (0.22, 0.25)):
+# budka: eski telefon jiringlashi (2 marta)
+for r0 in (22.55, 23.45):
+    n = int(0.7 * SR); tt = np.arange(n) / SR
+    bellmod = (np.sin(2 * np.pi * 22 * tt) > 0).astype(float)
+    ring = (np.sin(2 * np.pi * 1180 * tt) + 0.7 * np.sin(2 * np.pi * 1480 * tt)) * bellmod * env_ad(n, 0.01, 0.12)
+    add(fx, r0, 0.07 * ring)
+# yurak urishi: avval sekin, ochilishdan keyin tez
+beats = [22.7 + k * 0.7 for k in range(4)] + [25.5 + k * 0.42 for k in range(3)]
+for b0 in beats:
+    for off, a in ((0, 0.4), (0.2, 0.27)):
         n = int(0.25 * SR); tt = np.arange(n) / SR
-        add(fx, 22.7 + k * 0.62 + off, a * np.sin(2 * np.pi * 52 * tt) * np.exp(-tt * 18))
+        add(fx, b0 + off, a * np.sin(2 * np.pi * 52 * tt) * np.exp(-tt * 18))
+# ochilish zarbasi: dissonans + past zarba (25.5)
+n = int(2.6 * SR); tt = np.arange(n) / SR
+st = (np.sin(2 * np.pi * 466.2 * tt) + np.sin(2 * np.pi * 493.9 * tt) + np.sin(2 * np.pi * 698.5 * tt) + 0.8 * np.sin(2 * np.pi * 740 * tt))
+add(fx, 25.45, 0.06 * st * env_ad(n, 0.02, 2.2))
+add(fx, 25.45, 0.6 * np.sin(2 * np.pi * np.cumsum(80 * np.exp(-tt * 4) + 30) / SR) * np.exp(-tt * 2.5))
+# panorama paytida past whoosh
+n = int(1.2 * SR); tt = np.arange(n) / SR
+add(fx, 24.0, 0.05 * np.sin(2 * np.pi * np.cumsum(120 + 200 * tt) / SR) * np.sin(np.pi * tt / 1.2) ** 2)
 # yakun: eshik yopilish
 n = int(1.8 * SR); tt = np.arange(n) / SR
 add(fx, END0 - 0.05, 0.5 * np.sin(2 * np.pi * np.cumsum(90 * np.exp(-tt * 5) + 40) / SR) * np.exp(-tt * 3))
