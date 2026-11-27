@@ -60,6 +60,13 @@ h1 em{color:var(--amber);font-style:italic}
 .btn{appearance:none;border:0;cursor:pointer;font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.1em;padding:16px 22px;border-radius:12px;background:var(--amber);color:#1b1305;box-shadow:0 6px 0 #a5760c;transition:transform .08s}
 .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #a5760c}
 .btn:focus-visible,.ibtn:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.garage{display:flex;flex-direction:column;gap:8px}
+.cars{display:flex;gap:8px}
+.car-btn{flex:1;min-width:0;padding:11px 6px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.06em;cursor:pointer}
+.car-btn.on{border-color:var(--amber);color:var(--amber);box-shadow:inset 0 0 0 1px var(--amber)}
+.colors{display:flex;gap:10px;align-items:center}
+.sw{width:30px;height:30px;border-radius:50%;border:2px solid rgba(255,255,255,.25);cursor:pointer;padding:0}
+.sw.on{outline:3px solid var(--amber);outline-offset:2px}
 .best{font-family:var(--display);font-size:13px;color:var(--dim);letter-spacing:.12em}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
@@ -140,6 +147,7 @@ h1 em{color:var(--amber);font-style:italic}
       <b>C</b><span>Kamera: salon, orqadan, kapot</span>
       <b>Qoida</b><span>Sekinlashsang va GAI yoningda bo'lsa — ushlanasan. Oldinda postlar va radarlar bor.</span>
     </div>
+    <div class="garage"><div class="lbl">MASHINANG</div><div class="cars" id="cars"></div><div class="colors" id="colors"></div></div>
     <button class="btn" id="startBtn" type="button">YO'LGA CHIQISH</button>
     <div class="best" id="bestMenu"></div>
   </div>
@@ -471,6 +479,9 @@ const SPEC={
   nexia:{W:1.69,wb:2.48,rear:-1.14,wr:.3,sill:.27,headY:.7,tailY:.84,
     top:[[2.15,.45],[2.16,.64],[2.02,.78],[1.35,.9],[.9,.95],[-1.3,.98],[-1.9,1.0],[-2.12,.93],[-2.16,.66],[-2.13,.43]],
     gh:[[-1.4,.96],[.95,.94],[.22,1.45],[-.9,1.47]],roof:[[-.93,1.43],[.27,1.42],[.21,1.52],[-.87,1.52]]},
+  gentra:{W:1.73,wb:2.6,rear:-1.2,wr:.31,sill:.27,headY:.7,tailY:.86,
+    top:[[2.25,.45],[2.27,.63],[2.14,.78],[1.5,.88],[1.0,.93],[-1.3,.98],[-1.95,1.02],[-2.2,.95],[-2.26,.66],[-2.22,.43]],
+    gh:[[-1.4,.98],[1.02,.94],[.2,1.44],[-.92,1.46]],roof:[[-.95,1.42],[.25,1.41],[.19,1.5],[-.89,1.51]]},
   malibu:{W:1.86,wb:2.83,rear:-1.36,wr:.33,sill:.28,headY:.66,tailY:.82,
     top:[[2.45,.42],[2.47,.62],[2.3,.74],[1.6,.86],[1.1,.92],[-1.5,.96],[-2.2,.98],[-2.42,.9],[-2.46,.64],[-2.43,.42]],
     gh:[[-1.75,.95],[1.15,.92],[.15,1.4],[-1.15,1.42]],roof:[[-1.2,1.38],[.2,1.37],[.14,1.46],[-1.14,1.46]]},
@@ -515,7 +526,7 @@ const G={
   bigTire:new THREE.CylinderGeometry(.52,.52,.34,20).rotateZ(Math.PI/2),
   bigRim:new THREE.CylinderGeometry(.3,.3,.35,12).rotateZ(Math.PI/2),
 };
-const bumperGeo={};
+const bumperGeo={},grilleGeo={};
 function M(geo,mat,x=0,y=0,z=0,shadow=true){const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=shadow;return m;}
 function wheelGroup(r,x,z,front){const w=new THREE.Group();w.rotation.order='YXZ';const inner=new THREE.Group();inner.scale.setScalar(r);
   inner.add(M(G.tire,MAT.tire),M(G.rim,MAT.rim,0,0,0,false),M(G.hub,MAT.black,0,0,0,false));w.add(inner);w.position.set(x,r,z);w.userData.front=front;return w;}
@@ -534,6 +545,8 @@ function buildCar(type,color,opts={}){
     const fz=-(cg.maxX+.005),rz=-(cg.minX-.005),lx=W/2-.32;
     if(!bumperGeo[W])bumperGeo[W]=new THREE.BoxGeometry(W*.96,.13,.07);
     body.add(M(bumperGeo[W],MAT.black,0,sp.sill+.1,fz,false),M(bumperGeo[W],MAT.black,0,sp.sill+.1,rz,false));
+    if(!grilleGeo[W])grilleGeo[W]=[new THREE.BoxGeometry(W*.46,.15,.05),new THREE.BoxGeometry(W*.5,.035,.05),new THREE.BoxGeometry(W*.9,.03,.04)];
+    body.add(M(grilleGeo[W][0],MAT.black,0,sp.headY-.06,fz-.01,false),M(grilleGeo[W][1],MAT.rim,0,sp.headY+.035,fz-.02,false),M(grilleGeo[W][2],MAT.rim,0,sp.tailY-.12,rz+.015,false));
     body.add(M(G.plate,MAT.plate,0,sp.tailY-.27,rz+.03,false),M(G.plate,MAT.plate,0,sp.sill+.22,fz-.03,false));
     for(const x of [-lx,lx])body.add(M(G.lamp,MAT.tail,x,sp.tailY,rz,false),M(G.lamp,MAT.head,x,sp.headY,fz,false));
     if(opts.police){
@@ -686,12 +699,12 @@ let playerCar,cockpit;
 function resetGame(){
   for(const c of traffic)scene.remove(c.root);traffic=[];
   if(playerCar)scene.remove(playerCar.root);
-  playerCar=buildCar('malibu',0x16191e);cockpit=buildCockpit(playerCar);
-  Object.assign(P,{side:1,s:20,d:1.8,u:0,v:0,vl:0,r:0,psi:0,delta:0,steerIn:0,gear:1,rpm:900,ax:0,ay:0,slip:0,shiftT:0,hl:playerCar.hl,hw:playerCar.hw-.02,top:0,pitch:0,roll:0});camYaw=0;
+  playerCar=buildCar(garage.type,garage.color);cockpit=buildCockpit(playerCar);
+  Object.assign(P,{side:1,latV:0,s:20,d:1.8,u:0,v:0,vl:0,r:0,psi:0,delta:0,steerIn:0,gear:1,rpm:900,ax:0,ay:0,slip:0,shiftT:0,hl:playerCar.hl,hw:playerCar.hw-.02,top:0,pitch:0,roll:0});camYaw=0;
   t=0;elapsed=0;score=0;combo=0;comboT=0;timeScale=1;camD=1.8;lookD=1.8;damage=0;bust=0;level=1;levelT=0;copRespawnT=6;hitT=0;bubbleT=0;copsEscaped=0;copsWrecked=0;
   loadSegment(0);
   for(let i=0;i<18;i++)spawnCar(90,950);
-  spawnCop(-42,5.4,0);
+  spawnCop(-42,5.4,0);officer.visible=false;arrest=null;
 }
 const COLORS=[0xf2f2f0,0xf2f2f0,0xb9bdc2,0x1c1d20,0x23324f,0x8e1b1b,0xc9b99a,0x2e4434,0x5b5f66,0xe7e3d8,0x3a2a22];
 function addTraffic(o){traffic.push(o);return o;}
@@ -699,7 +712,7 @@ function spawnCar(a,b){
   for(let k=0;k<6;k++){
     const lane=(Math.random()*4)|0,dir=lane<2?-1:1,ld=LANES[lane];
     const truck=(lane===0||lane===3)&&Math.random()<.16;
-    const type=truck?'truck':pick(['cobalt','cobalt','cobalt','nexia','nexia','spark','spark','damas','damas','malibu']);
+    const type=truck?'truck':pick(['cobalt','cobalt','cobalt','gentra','gentra','nexia','nexia','spark','spark','damas','damas','malibu']);
     const s=P.s+rand(a,b);
     if(traffic.some(c=>Math.abs(c.d-ld)<1&&Math.abs(c.s-s)<45))continue;
     if(Math.abs(P.s-s)<35)continue;
@@ -737,36 +750,29 @@ const CP={m:1450,a:1.3,b:1.53,Iz:2300,h:.52,C:90000,mu:1.05,rw:.33,ratios:[3.5,2
 const curvR=s=>-(roadYaw(s+1)-roadYaw(s-1))/2;
 let wallT=0;
 function physStep(h,gas,brk,hand){
-  const {m,a,b,Iz,C,rw,ratios,fd}=CP,L=a+b,g=9.81;
-  const off=Math.abs(P.d)>7.7,mu=CP.mu*(off?.72:1),u=Math.max(P.u,0);
-  P.delta=P.steerIn*Math.min(.5,9.4*(L+.0013*u*u)/Math.max(u*u,1)*(hand?1.7:1)); // tezlikka qarab rul burchagi (≈0.95g)
+  const {m,rw,ratios,fd}=CP,g=9.81;
+  const off=Math.abs(P.d)>7.7,u=Math.max(P.u,0);
   const wrpm=u/rw*60/(2*Math.PI);
   let rpm=wrpm*ratios[P.gear-1]*fd;
   if(rpm>6300&&P.gear<6){P.gear++;P.shiftT=.16;}else if(rpm<2400&&P.gear>1)P.gear--;
   rpm=Math.max(900,wrpm*ratios[P.gear-1]*fd);P.rpm+=(rpm+(gas&&u<1?1800:0)-P.rpm)*Math.min(1,h*20);
   const tcurve=rpm<1500?.75:rpm<4800?1:Math.max(.5,1-(rpm-4800)/5000);
   let Fx=(gas&&P.shiftT<=0&&rpm<6900)?CP.tq*tcurve*ratios[P.gear-1]*fd*.9/rw*(1-damage/220):0;
-  const FzF=m*g*b/L-m*P.ax*CP.h/L,FzR=m*g*a/L+m*P.ax*CP.h/L;
-  let FyF=0,FyR=0,aF=0,aR=0;
-  if(u>3){
-    aF=Math.atan2(P.vl+a*P.r,u)-P.delta;aR=Math.atan2(P.vl-b*P.r,u);
-    const muR=hand?mu*.42:mu;
-    FyF=clamp(-C*aF,-mu*FzF,mu*FzF);FyR=clamp(-C*aR,-muR*FzR,muR*FzR);
-    P.vl+=((FyF*Math.cos(P.delta)+FyR)/m-u*P.r)*h;
-    P.r+=((a*FyF*Math.cos(P.delta)-b*FyR)/Iz)*h;
-  } else {const rk=u*Math.tan(P.delta)/L;P.r+=(rk-P.r)*Math.min(1,h*12);P.vl*=1-Math.min(1,h*8);}
-  Fx=Math.min(Fx,Math.sqrt(Math.max(0,(mu*FzF)**2-FyF*FyF)));
+  Fx=Math.min(Fx,m*g*.62);
   const drag=.5*1.2*CP.cd*u*u+(u>.1?m*g*.013:0)+(off&&u>.5?m*1.6:0);
-  const Fb=brk?m*9.5:(hand?m*2.5:0);
+  const Fb=brk?m*9.5:(hand?m*3.5:0);
   const ax=(Fx-drag-(u>.05?Fb:0))/m-g*Math.sin(Math.atan(grade(P.s)));
   P.u=Math.max(0,P.u+ax*h);P.ax+=(ax-P.ax)*Math.min(1,h*8);
-  P.ay+=((FyF+FyR)/m-P.ay)*Math.min(1,h*8);
-  P.slip=Math.max(Math.abs(aF),Math.abs(aR)*(hand?1.6:1));
-  const ds=(P.u*Math.cos(P.psi)-P.vl*Math.sin(P.psi))*h,dd=(P.u*Math.sin(P.psi)+P.vl*Math.cos(P.psi))*h;
-  P.s+=ds;P.d+=dd;P.psi+=P.r*h-curvR(P.s)*ds;
+  // rul: birinchi o'yindagidek — tez va aniq yon harakat
+  const drift=hand&&u>8;
+  const latMax=Math.min(3+u*.15,11.5)*(off?.8:1)*(drift?1.25:1);
+  P.latV+=(P.steerIn*latMax-P.latV)*Math.min(1,h*6);
+  P.ay=P.latV*1.3;P.delta=P.steerIn*.32;P.slip=drift?.2:0;P.vl=0;P.r=0;
+  P.s+=P.u*h;P.d+=P.latV*h;
+  P.psi=Math.atan2(P.latV,Math.max(u,4))*.8*(drift?1.8:1);
   if(Math.abs(P.d)>1)P.side=Math.sign(P.d);
-  if(hasBarrier(P.s)){const sd=P.side||1,lim=.34+P.hw;if(P.d*sd<lim){P.d=sd*lim;if(P.psi*sd<0)P.psi*=-.3;P.vl=0;P.r*=.5;P.u*=1-h*1.8;wallT=.3;}}
-  if(Math.abs(P.d)>8.6){const sg=Math.sign(P.d);P.d=sg*8.6;if(P.psi*sg>0)P.psi*=-.3;P.vl=0;P.r*=.5;P.u*=1-h*1.5;wallT=.25;}
+  if(hasBarrier(P.s)){const sd=P.side||1,lim=.34+P.hw;if(P.d*sd<lim){P.d=sd*lim;P.latV=0;P.u*=1-h*1.8;wallT=.3;}}
+  if(Math.abs(P.d)>8.6){P.d=Math.sign(P.d)*8.6;P.latV=0;P.u*=1-h*1.5;wallT=.25;}
 }
 // beton to'siq: OSM bo'yicha ajratilgan yo'lda; burilish (U-turn) joylarida, postlar oldida va ba'zi uchastkalarda yo'q
 function hasBarrier(s){if(!R||!(R.divided||[]).some(r=>s>=r[0]&&s<=r[1]))return false;if(postState.some(p=>Math.abs(s-p.s)<650))return false;
@@ -774,14 +780,11 @@ function hasBarrier(s){if(!R||!(R.divided||[]).some(r=>s>=r[0]&&s<=r[1]))return 
 function updatePlayer(dt){
   const key=(input.right?1:0)-(input.left?1:0);
   if(state==='play'){
-    // qo'l rulni ushlab turgandek: tugma bosilmasa, mashina yo'l bo'ylab tekislanadi
-    const target=key!==0?key:clamp(-P.psi*7-P.r*.9,-.4,.4)*(P.u>4?1:0);
-    const rate=key===0?5:(P.steerIn*key<0?6:2.6);
-    P.steerIn+=clamp(target-P.steerIn,-rate*dt,rate*dt);
+    P.steerIn+=clamp(key-P.steerIn,-dt*9,dt*9);
     P.shiftT-=dt;
     for(let i=0;i<8;i++)physStep(dt/8,input.gas,input.brake,input.hand);
     P.top=Math.max(P.top,P.u);
-  } else if(state==='end'){P.steerIn=0;for(let i=0;i<4;i++)physStep(dt/4,false,true,false);}
+  } else if(state==='end'||state==='arrest'){P.steerIn=0;for(let i=0;i<4;i++)physStep(dt/4,false,true,false);}
   else{P.u=0;P.rpm+=(900-P.rpm)*Math.min(1,dt*4);}
   P.v=P.u;wallT=Math.max(0,wallT-dt);
   P.pitch+=(clamp(P.ax*.006,-.05,.03)-P.pitch)*Math.min(1,dt*6);
@@ -791,9 +794,9 @@ function copDrive(c,dt){
   if(c.block){c.v=0;return;}
   const ds=P.s-c.s;let target;
   if(state!=='play'){target=state==='end'?Math.max(0,P.v):0;}
-  else if(ds>160)target=P.v+14;else if(ds>18)target=P.v+7;else if(ds>-4)target=P.v+1.5;else target=P.v-9;
-  target=clamp(target,0,58);
-  const scans=LANES.map(ld=>laneScan(ld,c.s,c.v,c,ds<14&&ds>-6));
+  else if(ds>160)target=P.v+14;else if(ds>40)target=P.v+5;else if(ds>12)target=P.v<3?7:P.v+.5;else if(ds>-4)target=P.v-2;else target=P.v-9;
+  target=clamp(target,0,47);   // ~170 km/h: to'liq tezlikda GAIdan uzoqlasha olasan
+  const scans=LANES.map(ld=>laneScan(ld,c.s,c.v,c,false));
   c.think-=dt;
   if(Math.abs(c.targetD-c.d)<.4&&c.think<=0){
     const cur=nearestLane(c.targetD),want=nearestLane(P.d);let best=cur,bs=-1e9;
@@ -801,8 +804,6 @@ function copDrive(c,dt){
       const score=Math.min(sc.ttc,6)-Math.abs(i-want)*.9-(i<2?.4:0)+(i===cur?.4:0);if(score>bs){bs=score;best=i;}}
     if(best!==cur){c.targetD=LANES[best];c.think=.5;}
   }
-  // yoniga kelganda siqib chiqarishga urinadi
-  if(state==='play'&&Math.abs(ds)<4&&Math.random()<dt*.6&&(Math.sign(P.d)===Math.sign(c.d)||!hasBarrier(c.s)))c.targetD=P.d;
   if(state==='play'&&Math.abs(ds)>=4&&Math.abs(c.targetD-P.d)<1&&Math.abs(c.targetD-c.d)<.5&&ds<14&&ds>0)c.targetD=LANES[nearestLane(c.d)];
   const block=scans[nearestLane(c.d)].ttc;
   if(block<1.1)c.v=Math.max(0,c.v-24*dt);else c.v+=clamp(target-c.v,-18*dt,11*dt);
@@ -823,7 +824,7 @@ function updateTraffic(dt){
 const overlap=(a,b,pad=0)=>Math.abs(a.s-b.s)<a.hl+b.hl-pad&&Math.abs(a.d-b.d)<a.hw+b.hw-.1;
 function separate(c){
   const ds=P.s-c.s,dd=P.d-c.d,ox=P.hl+c.hl-Math.abs(ds),oy=P.hw+c.hw-Math.abs(dd);
-  if(oy<ox){P.d+=Math.sign(dd||1)*oy;P.vl=Math.sign(dd||1)*2.5;}else{P.s+=Math.sign(ds||-1)*ox;}
+  if(oy<ox){P.d+=Math.sign(dd||1)*oy;P.latV=Math.sign(dd||1)*3;}else{P.s+=Math.sign(ds||-1)*ox;}
 }
 function collisions(){
   for(const c of traffic){
@@ -839,7 +840,7 @@ function collisions(){
         damage=Math.min(100,damage+dmg);c.hit=true;
         if(!c.cop||c.block){c.crashed=!c.block;c.spinV=(c.d<P.d?-1:1)*3;}
         if(oncoming)P.u*=.15;else if(P.s<c.s)P.u=Math.min(P.u,c.v*.7+2);else P.u*=.9;P.v=P.u;
-        const side=P.d<c.d?-1:1;P.r+=side*(.5+rel*.03);P.vl+=side*2;
+        const side=P.d<c.d?-1:1;P.latV=side*5;
         flash(c.cop?'rgba(60,120,255,.35)':'rgba(255,40,20,.4)');crashSound(c.cop?.4:Math.min(1.2,rel/30));
         if(!c.cop){popup(`URILDING! −${Math.round(dmg)}%`,false,true);combo=0;}
         if(damage>=100){endGame('wreck');return;}
@@ -855,12 +856,12 @@ function collisions(){
 function updateCops(dt){
   const cops=traffic.filter(c=>c.cop&&!c.block&&!c.crashed);
   // ushlanish
-  let near=false,close=1e9;
-  for(const c of traffic){if(!c.cop||c.crashed)continue;const ds=Math.abs(c.s-P.s);close=Math.min(close,c.s<P.s+5?P.s-c.s:1e9);
-    if(ds<9&&Math.abs(c.d-P.d)<4.6&&P.v<15)near=true;if(c.block&&ds<12&&P.v<6)near=true;}
-  const anyBehind=cops.some(c=>P.s-c.s<30&&P.s-c.s>-10);
-  if(near)bust+=dt;else if(P.v<4&&anyBehind)bust+=dt*.8;else bust=Math.max(0,bust-dt*.7);
-  if(bust>=2.6){endGame('bust');return;}
+  // ushlash faqat to'xtab qolganingda: GAI yoningda yoki postda turgan bo'lsang
+  let near=null,close=1e9;
+  for(const c of traffic){if(!c.cop||c.crashed)continue;const ds=P.s-c.s;if(c.s<P.s+5)close=Math.min(close,ds);
+    if(!c.block&&ds>-3&&ds<35&&Math.abs(c.d-P.d)<7&&P.v<3)near=c;if(c.block&&Math.abs(ds)<16&&P.v<3)near=c;}
+  if(near)bust+=dt;else bust=Math.max(0,bust-dt*1.5);
+  if(bust>=1.2){startArrest(near);return close;}
   // qochib ketgan GAI
   for(const c of traffic){if(c.cop&&!c.block&&!c.gone&&P.s-c.s>420){c.gone=true;copsEscaped++;score+=600;popup("GAIDAN UZILDING! +600",true);}}
   // qidiruv darajasi
@@ -892,6 +893,32 @@ function startTransition(){
     $('trans').classList.remove('on');setTimeout(()=>{$('trans').hidden=true;},700);
     state='play';popup("QAMCHIQ YO'LI — GAI HAMON ORQANGDA!",true,true);
   },2600);
+}
+/* GAI inspektori mashinadan tushib, yugurib kelib ushlaydi */
+function buildOfficer(){const g=new THREE.Group();
+  const uni=new THREE.MeshStandardMaterial({color:0x34402f,roughness:.85}),vest=new THREE.MeshStandardMaterial({color:0xc6f23a,emissive:0x2c3c00,roughness:.6});
+  const skin=new THREE.MeshStandardMaterial({color:0xc99a72,roughness:.8});
+  const mk=(geo,mat,x,y,z)=>{const m=new THREE.Mesh(geo,mat);m.position.set(x,y,z);m.castShadow=true;return m;};
+  g.add(mk(new THREE.BoxGeometry(.46,.62,.27),vest,0,1.22,0),mk(new THREE.SphereGeometry(.13,12,10),skin,0,1.67,0),
+    mk(new THREE.CylinderGeometry(.155,.15,.09,14),uni,0,1.8,0),mk(new THREE.BoxGeometry(.2,.02,.12),MAT.black,0,1.76,-.13));
+  const limb=(w,h,mat,x,y)=>{const p=new THREE.Group();p.position.set(x,y,0);p.add(mk(new THREE.BoxGeometry(w,h,w),mat,0,-h/2,0));g.add(p);return p;};
+  g.userData={lL:limb(.17,.88,uni,-.12,.92),lR:limb(.17,.88,uni,.12,.92),aL:limb(.12,.62,vest,-.31,1.5),aR:limb(.12,.62,vest,.31,1.5)};
+  g.visible=false;scene.add(g);return g;}
+const officer=buildOfficer();let arrest=null;
+function startArrest(cop){
+  state='arrest';for(const k in input)input[k]=false;camMode=1;$('camBtn').textContent=CAMS[camMode];
+  const side=cop.d<P.d?1:-1;
+  arrest={t:0,from:{s:cop.s+.8,d:cop.d+side*1.3},to:{s:P.s+.5,d:P.d-1.35}};
+  officer.visible=true;popup("TO'XTANG! YHXB!",true,true);
+}
+function updateArrest(dt){
+  const a=arrest;a.t+=dt;const T=clamp(Math.hypot(a.to.s-a.from.s,a.to.d-a.from.d)/6.5,1.4,4),f=Math.min(1,a.t/T),u=officer.userData;
+  const s=a.from.s+(a.to.s-a.from.s)*f,d=a.from.d+(a.to.d-a.from.d)*f;
+  roadPos(s,d,0,officer.position);
+  if(f<1){officer.rotation.y=roadYaw(s)-Math.atan2(a.to.d-a.from.d,a.to.s-a.from.s);const w=Math.sin(a.t*13)*.8;
+    u.lL.rotation.x=w;u.lR.rotation.x=-w;u.aL.rotation.x=-w;u.aR.rotation.x=w;}
+  else{officer.rotation.y=roadYaw(s)-Math.PI/2;u.lL.rotation.x=u.lR.rotation.x=0;u.aL.rotation.x=0;u.aR.rotation.x=-1.4;}
+  if(a.t>T+1.1)endGame('bust');
 }
 function endGame(reason){
   if(state==='end')return;state='end';endReason=reason;
@@ -935,6 +962,8 @@ function updateCamera(dt){
     const lean=-P.ay*.006;camPos.x+=rx*lean;camPos.z+=rz*lean;camPos.y+=P.pitch*.6;
   }
   intro=state==='menu'?0:Math.min(1,intro+dt*.7);
+  if(arrest&&officer.visible){   // ushlash sahnasi: mashina va yugurib kelayotgan inspektorni yondan ko'rsatadi
+    roadPos(P.s+6,P.d-4.6,1.9,camPos);roadPos(P.s-5,P.d-1,1,camLook);}
   const k=smooth(0,1,intro);
   camera.position.lerpVectors(orbitPos,camPos,k);camLook.lerpVectors(menuLook,camLook,k);
   const sp=Math.max(0,(P.v-40)/30)*(mode==='SALON'?.006:.02)+(Math.abs(P.d)>7.7&&P.v>5?.04:0)+hitT*.25+wallT*.15;
@@ -962,13 +991,13 @@ function updateHud(close){
   $('spd').textContent=Math.round(P.v*3.6);
   $('stars').innerHTML='<b>'+'★'.repeat(level)+'</b>'+'★'.repeat(4-level);
   $('copDist').textContent=close<1e8?`GAI: ${Math.max(0,Math.round(close))} m`:'GAI: ko\'rinmaydi';
-  $('bust').style.width=(clamp(bust/2.6,0,1)*100)+'%';
+  $('bust').style.width=(clamp(bust/1.2,0,1)*100)+'%';
   const rk=realKm(P.s),f=clamp(rk/ROUTE.real_total_km,0,1);$('routeFill').style.width=(f*100)+'%';$('routeDot').style.left=(f*100)+'%';
   $('kmLeft').textContent=`${Math.max(0,ROUTE.real_total_km-rk).toFixed(1)} km`;
   $('dmg').textContent=Math.round(damage)+'%';$('dmgBar').style.width=damage+'%';
   $('dmgBar').style.background=damage>66?'var(--hot)':'var(--amber)';
   const w=$('warn');
-  if(bust>.2){w.hidden=false;w.textContent='GAI USHLAYAPTI! TEZLIKNI OSHIR!';}else w.hidden=true;
+  if(bust>.15){w.hidden=false;w.textContent='GAI YETIB KELDI! TEZROQ JO\'NA!';}else w.hidden=true;
 }
 const bubble=$('bubble');
 function updateBubble(){
@@ -1036,6 +1065,20 @@ function startGame(){
   for(const k in input)input[k]=false;
 }
 $('startBtn').addEventListener('click',startGame);$('againBtn').addEventListener('click',startGame);
+const PLAYER_CARS=[['cobalt','COBALT'],['gentra','GENTRA'],['nexia','NEXIA 3']];
+const PAINTS=[[0xf2f2f0,'Oq'],[0x16191e,'Qora'],[0xb9bdc2,'Kumush'],[0x8e1b1b,'Qizil'],[0x23324f,"To'q ko'k"]];
+const garage={type:'cobalt',color:0xf2f2f0};
+try{const g=JSON.parse(localStorage.getItem('qamchiqCar')||'null');if(g&&SPEC[g.type])Object.assign(garage,g);}catch(e){}
+function renderGarage(){
+  $('cars').innerHTML='';$('colors').innerHTML='';
+  for(const [t,n] of PLAYER_CARS){const b=document.createElement('button');b.type='button';b.className='car-btn'+(garage.type===t?' on':'');b.textContent=n;b.onclick=()=>pickCar(t,garage.color);$('cars').appendChild(b);}
+  for(const [c,n] of PAINTS){const b=document.createElement('button');b.type='button';b.className='sw'+(garage.color===c?' on':'');b.title=n;b.setAttribute('aria-label',n);
+    b.style.background='#'+c.toString(16).padStart(6,'0');b.onclick=()=>pickCar(garage.type,c);$('colors').appendChild(b);}
+}
+function pickCar(type,color){garage.type=type;garage.color=color;try{localStorage.setItem('qamchiqCar',JSON.stringify(garage));}catch(e){}
+  if(state==='menu'&&playerCar){scene.remove(playerCar.root);playerCar=buildCar(type,color);cockpit=buildCockpit(playerCar);P.hl=playerCar.hl;P.hw=playerCar.hw-.02;}
+  renderGarage();}
+renderGarage();
 function showBestMenu(){$('bestMenu').textContent=best?`REKORD: ${fmt(best)}`:'';}
 
 /* ================= loop ================= */
@@ -1050,6 +1093,7 @@ function update(dt,rdt){
   updatePlayer(dt);updateTraffic(dt);collisions();
   let close=1e9;
   if(state==='play'||state==='count'){close=updateCops(dt)??1e9;}
+  if(state==='arrest')updateArrest(dt);
   if(state==='play'){score+=P.v*dt;comboT-=dt;if(comboT<=0)combo=0;updateWorldEvents();}
   const want=15+Math.min(elapsed/10,13);
   traffic=traffic.filter(c=>{const keep=c.s>P.s-(c.cop&&!c.block?520:70)&&c.s<P.s+1150;if(!keep)scene.remove(c.root);return keep;});

@@ -9,10 +9,11 @@ cd qamchiq && python3 -m http.server 8000
 # keyin brauzerda: http://localhost:8000
 ```
 
-**Boshqaruv:** ← → / A D — rul, ↑ / W — gaz, ↓ / S — tormoz, Probel — qo'l tormozi (drift), C — kamera (salon, orqadan, kapot). Telefonda ekrandagi tugmalar; salon ko'rinishida yon va orqa ko'zgular ekranda chiqadi. Telefonni yotqizib o'ynash qulayroq.
+**Boshqaruv:** ← → / A D — rul (birinchi versiyadagidek tez), ↑ / W — gaz, ↓ / S — tormoz, Probel — qo'l tormozi (drift), C — kamera (salon, orqadan, kapot). Telefonda ekrandagi tugmalar; salon ko'rinishida yon va orqa ko'zgular ekranda chiqadi. Telefonni yotqizib o'ynash qulayroq.
 
 **Qoidalar**
-- Sekinlashsang va GAI yoningda bo'lsa, ushlanasan (chap yuqoridagi qizil chiziq).
+- GAI urmaydi: to'liq tezlikda undan uzoqlasha olasan. To'xtab qolsang (avariya, tirbandlik, post) va GAI yaqin bo'lsa, inspektor mashinadan tushib, yugurib kelib ushlaydi.
+- Menyuda mashinangni tanlaysan: Cobalt, Gentra yoki Nexia 3 va rangi.
 - Mashinalarga urilish shikast beradi; 100% bo'lsa mashina ishdan chiqadi.
 - Radar oldidan 100 km/h dan tez o'tsang, qidiruv darajasi oshadi.
 - Yo'l o'rtasida beton to'siq bor (OSM bo'yicha ajratilgan yo'lda); burilish joylarida va YHXB postlari oldida u bo'lmaydi.
