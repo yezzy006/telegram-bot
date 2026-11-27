@@ -1,19 +1,28 @@
 # Qamchiqqa Qochish
 
-Brauzerda ishlaydigan 3D poyga o'yini: Andijondan Qamchiq dovonigacha YHXB quvayotgan holda yetib borish.
+Brauzerda ishlaydigan 3D o'yin: haqiqiy A373 yo'li bo'ylab Andijondan Qamchiq dovonigacha YHXB quvayotgan holda yetib borish.
 
-**Ishga tushirish:** `qamchiq/index.html` faylini brauzerda oching (internet kerak — Three.js CDN'dan yuklanadi).
+**Ishga tushirish:** o'yin `route.json` faylini yuklaydi, shuning uchun uni oddiy fayl sifatida emas, kichik server orqali oching:
 
-**Boshqaruv:** ← → / A D — rul, ↑ / W — gaz, ↓ / S — tormoz, Probel — qo'l tormozi (drift), C — kamera (salon, orqadan, kapot). Telefonda ekrandagi tugmalar.
+```
+cd qamchiq && python3 -m http.server 8000
+# keyin brauzerda: http://localhost:8000
+```
+
+**Boshqaruv:** ← → / A D — rul, ↑ / W — gaz, ↓ / S — tormoz, Probel — qo'l tormozi (drift), C — kamera (salon, orqadan, kapot). Telefonda ekrandagi tugmalar; salon ko'rinishida yon va orqa ko'zgular ekranda chiqadi. Telefonni yotqizib o'ynash qulayroq.
 
 **Qoidalar**
 - Sekinlashsang va GAI yoningda bo'lsa, ushlanasan (chap yuqoridagi qizil chiziq).
 - Mashinalarga urilish shikast beradi; 100% bo'lsa mashina ishdan chiqadi.
-- Radar oldidan 90 km/h dan tez o'tsang, qidiruv darajasi oshadi.
-- YHXB postlari o'z yo'nalishingni yopadi — qarshi polosadan aylanib o'tish kerak.
-- Vodiy (dalalar, teraklar) asta-sekin tog'larga, oxirida qorli dovonga aylanadi.
+- Radar oldidan 100 km/h dan tez o'tsang, qidiruv darajasi oshadi.
+- Yo'l o'rtasida beton to'siq bor (OSM bo'yicha ajratilgan yo'lda); burilish joylarida va YHXB postlari oldida u bo'lmaydi.
+
+**Haqiqiy yo'l (`route.json`)**
+- Yo'l chizig'i: OpenStreetMap (A373, © OpenStreetMap hissadorlari, ODbL). Relyef: NASA SRTM 1″.
+- Ikki qism, 1:1 o'lchamda: Andijondan chiqish (5 km) va Qamchiq dovoniga ko'tarilish (14 km, 1588 → 2187 m, 416 m lik Qamchiq tunneli bilan). Oradagi ~180 km (Shahrixon, Bo'ston, Yozyovon) o'tish ekrani bilan qisqartirilgan.
+- Qayta yaratish: `python3 tools/build_route.py --osm a373.json --dem SRTM_PAPKA --places places.json --out route.json` (so'rovlar skript ichida yozilgan).
 
 **Bosqichlar**
-1. ✅ Salon ko'rinishi (rul, spidometr, taxometr, salon oynasi), GAI quvish rejimi.
-2. ✅ Mashinalar: Cobalt, Nexia, Spark, Damas, Malibu, fura (g'ildirak arkalari, oynalar, ko'zgular); fizika: shinalar sirpanishi, og'irlik ko'chishi, 6 bosqichli avtomat uzatma, qo'l tormozi bilan drift, shina tutuni va chiyillashi.
-3. ⏳ Haqiqiy yo'l: OpenStreetMap va relyef ma'lumotlari asosida Andijon → Qamchiq.
+1. ✅ Salon ko'rinishi (rul, spidometr, taxometr, ko'zgular), GAI quvish rejimi.
+2. ✅ Mashinalar: Cobalt, Nexia, Spark, Damas, Malibu, fura; fizika: shina sirpanishi, og'irlik ko'chishi, 6 bosqichli avtomat uzatma, qo'l tormozi, tutun.
+3. ✅ Haqiqiy yo'l, relyef, tunnel, beton to'siq, yo'l bo'yidagi shahar nomlari.

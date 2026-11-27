@@ -56,11 +56,12 @@ def hav(a, b):
 
 # ---------------------------------------------------------------- graph
 def build_graph(osm):
-    adj = {}; coord = {}; tunnel_edge = set(); bridge_edge = set()
+    adj = {}; coord = {}; tunnel_edge = set(); bridge_edge = set(); divided_edge = set()
     for w in osm['elements']:
         if w.get('type') != 'way' or 'geometry' not in w: continue
         tags = w.get('tags', {})
-        nodes = w['nodes']; geom = w['geometry']
+        geom = w['geometry']
+        nodes = w.get('nodes') or [(round(g['lat'], 7), round(g['lon'], 7)) for g in geom]  # 'out geom' may omit ids
         ow = tags.get('oneway', 'no'); hw = tags.get('highway', '')
         oneway = ow in ('yes', '1', 'true') or hw == 'motorway'
         rev = ow == '-1'
@@ -68,11 +69,45 @@ def build_graph(osm):
         for a, b in zip(nodes[:-1], nodes[1:]):
             d = hav(coord[a], coord[b])
             pairs = [(b, a)] if rev else ([(a, b)] if oneway else [(a, b), (b, a)])
+            if len(pairs) == 1:  # OSM oneway gaps happen; allow the wrong way at a heavy cost so the right carriageway wins
+                u, v = pairs[0]; adj.setdefault(v, []).append((u, d * 4))
             for u, v in pairs:
                 adj.setdefault(u, []).append((v, d))
-                if tags.get('tunnel') in ('yes', 'building_passage'): tunnel_edge.add((u, v))
-                if tags.get('bridge') == 'yes': bridge_edge.add((u, v))
-    return adj, coord, tunnel_edge, bridge_edge
+                if tags.get('tunnel') in ('yes', 'building_passage'): tunnel_edge.update([(u, v), (v, u)])
+                if tags.get('bridge') == 'yes': bridge_edge.update([(u, v), (v, u)])
+                if oneway: divided_edge.update([(u, v), (v, u)])   # OSM draws divided highways as two one-way ways
+    stitch(adj, coord)
+    return adj, coord, tunnel_edge, bridge_edge, divided_edge
+
+def stitch(adj, coord, max_gap=600.0):
+    """OSM sometimes has a missing/mis-tagged piece of the A373; join pieces whose ends are < max_gap apart."""
+    und = {}
+    for u, l in adj.items():
+        for v, _ in l: und.setdefault(u, set()).add(v); und.setdefault(v, set()).add(u)
+    seen = set(); comps = []
+    for n in und:
+        if n in seen: continue
+        st = [n]; c = []; seen.add(n)
+        while st:
+            x = st.pop(); c.append(x)
+            for y in und[x]:
+                if y not in seen: seen.add(y); st.append(y)
+        comps.append(c)
+    comps.sort(key=len, reverse=True)
+    main = comps[0]
+    for c in comps[1:]:
+        A = np.array([coord[n] for n in main]); B = np.array([coord[n] for n in c])
+        kx = math.cos(math.radians(A[:, 0].mean()))
+        best = None
+        for j, b in enumerate(B):
+            d = np.hypot((A[:, 0] - b[0]) * 111320, (A[:, 1] - b[1]) * 111320 * kx)
+            i = int(d.argmin())
+            if best is None or d[i] < best[0]: best = (float(d[i]), main[i], c[j])
+        if best[0] < max_gap:
+            _, u, v = best
+            adj.setdefault(u, []).append((v, best[0])); adj.setdefault(v, []).append((u, best[0]))
+            main = main + c
+            print(f'stitched a {len(c)}-node piece across {best[0]:.0f} m')
 
 def dijkstra(adj, src, dst):
     dist = {src: 0.0}; prev = {}; pq = [(0.0, src)]
@@ -154,6 +189,16 @@ def make_segment(name, pts, flags, dem, labels, step=2.0, margin=1400.0, cell=20
             lon = lon0 + (x0 + ix * cell) / kx
             grid[iz, ix] = dem.h(lat, lon)
     grid = np.where(np.isnan(grid), np.nanmean(grid), grid)
+    def ranges(mask):
+        out = []; i = 0
+        while i < len(mask):
+            if mask[i]:
+                j = i
+                while j < len(mask) and mask[j]: j += 1
+                out.append([round(i * step, 1), round(j * step, 1)]); i = j
+            else: i += 1
+        return out
+    divided = ranges(np.array([f[2] for f in flags]))
     tunnels = []
     i = 0
     while i < len(tun):
@@ -166,7 +211,7 @@ def make_segment(name, pts, flags, dem, labels, step=2.0, margin=1400.0, cell=20
         'name': name, 'step': step, 'n': len(pts), 'length': round(total, 1), 'base': round(base, 1),
         'lat0': lat0, 'lon0': lon0,
         'x': b64(X, '<f4'), 'z': b64(Z, '<f4'), 'y': b64(Y - base, '<f4'),
-        'tunnels': tunnels, 'labels': labels,
+        'tunnels': tunnels, 'divided': divided, 'labels': labels,
         'dem': {'x0': x0, 'z0': z0, 'cell': cell, 'nx': nx, 'nz': nz, 'h': b64(np.clip(grid, 0, 65535), '<u2')},
         'alt_start': round(float(Y[0]), 0), 'alt_end': round(float(Y[-1]), 0),
     }
@@ -174,18 +219,20 @@ def make_segment(name, pts, flags, dem, labels, step=2.0, margin=1400.0, cell=20
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--osm', required=True); ap.add_argument('--dem', required=True); ap.add_argument('--out', required=True)
+    ap.add_argument('--places'); ap.add_argument('--end', default='41.0952,70.5226', help='lat,lon to end at (west portal side, past the Kamchik tunnel)')
     ap.add_argument('--lenA', type=float, default=5000); ap.add_argument('--lenB', type=float, default=14000)
     a = ap.parse_args()
     osm = json.load(open(a.osm)); dem = DEM(a.dem)
-    adj, coord, tun_e, bri_e = build_graph(osm)
+    adj, coord, tun_e, bri_e, div_e = build_graph(osm)
     # Pass = highest node of the A373 network west of 71.0E
     cand = [n for n in coord if n in adj and coord[n][1] < 71.0]
     top = max(cand, key=lambda n: dem.h(*coord[n]))
     src = nearest(coord, adj, ANDIJON)
-    path = dijkstra(adj, src, top)
+    end = nearest(coord, adj, tuple(map(float, a.end.split(','))))
+    path = dijkstra(adj, src, end)
     if not path: raise SystemExit('no path Andijon → pass in this OSM extract')
     latlon = [coord[n] for n in path]
-    flags = [((u, v) in tun_e, (u, v) in bri_e) for u, v in zip(path[:-1], path[1:])]
+    flags = [((u, v) in tun_e, (u, v) in bri_e, (u, v) in div_e) for u, v in zip(path[:-1], path[1:])]
     cum = [0.0]
     for p, q in zip(latlon[:-1], latlon[1:]): cum.append(cum[-1] + hav(p, q))
     total = cum[-1]
@@ -195,12 +242,28 @@ def main():
         return latlon[i0:i1 + 1], flags[i0:i1], cum[i0], cum[i1]
     pA, fA, a0, a1 = cut(1500, 1500 + a.lenA)
     pB, fB, b0, b1 = cut(total - a.lenB, total)
-    segA = make_segment('A', pA, fA, dem, [[0, 'ANDIJON']])
-    segB = make_segment('B', pB, fB, dem, [[0, 'DOVON YO\'LI'], [round(b1 - b0 - 1, 0), 'QAMCHIQ DOVONI']])
+    # real towns along the way (OSM place=city/town): where the road passes within 2.5 km
+    towns = []
+    if a.places:
+        def nm(t): return (t.get('name:uz') or t.get('name:uz-Latn') or t.get('name:en') or t.get('name')).upper()
+        P = np.array(latlon); kx = math.cos(math.radians(P[:, 0].mean()))
+        for e in json.load(open(a.places))['elements']:
+            d = np.hypot((P[:, 0] - e['lat']) * 111320, (P[:, 1] - e['lon']) * 111320 * kx); i = int(d.argmin())
+            if d[i] < 2500: towns.append((cum[i], nm(e['tags'])))
+        towns.sort()
+        print('towns on the way:', [(round(c / 1000), n) for c, n in towns])
+    labA = [[0, 'ANDIJON']] + [[round(c - a0), n] for c, n in towns if a0 < c < a1]
+    labB = [[0, 'DOVON YO\'LI']] + [[round(c - b0), n] for c, n in towns if b0 < c < b1]
+    tun_s = [t for t in (make_segment('B', pB, fB, dem, [])['tunnels'])]
+    if tun_s: labB.append([tun_s[0][0], 'QAMCHIQ TUNNELI'])
+    labB.append([round(b1 - b0 - 30), 'QAMCHIQ DOVONI'])
+    segA = make_segment('A', pA, fA, dem, labA)
+    segB = make_segment('B', pB, fB, dem, labB)
     out = {'source': 'OpenStreetMap contributors (ODbL); NASA SRTM 1 arc-second',
            'real_total_km': round(total / 1000, 1),
            'real_a': [round(a0 / 1000, 2), round(a1 / 1000, 2)], 'real_b': [round(b0 / 1000, 2), round(b1 / 1000, 2)],
-           'pass_alt': round(dem.h(*coord[top])), 'segments': [segA, segB]}
+           'pass_alt': round(dem.h(*coord[top])), 'segments': [segA, segB],
+           'between': [n for c, n in towns if a1 < c < b0]}
     json.dump(out, open(a.out, 'w'), separators=(',', ':'))
     print('wrote', a.out, os.path.getsize(a.out) // 1024, 'KB', {k: (s['length'], s['alt_start'], s['alt_end'], s['tunnels']) for k, s in zip('AB', out['segments'])})
 
